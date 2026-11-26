@@ -1,0 +1,1291 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101114">
+<title>MiniLLM 3.1</title>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
+
+<style>
+:root {
+ --bg:#101114;
+ --side:#151619;
+ --panel:#1b1d21;
+ --panel2:#25282e;
+ --border:#30343b;
+ --text:#f2f4f6;
+ --muted:#999faa;
+ --accent:#43d9a3;
+ --user:#272c33;
+}
+body.light {
+ --bg:#f4f6f8;
+ --side:#fff;
+ --panel:#fff;
+ --panel2:#edf0f3;
+ --border:#dfe3e8;
+ --text:#20232a;
+ --muted:#747c88;
+ --user:#e8edf1;
+}
+* {box-sizing:border-box}
+body {
+ margin:0;
+ height:100vh;
+ display:flex;
+ overflow:hidden;
+ background:var(--bg);
+ color:var(--text);
+ font-family:Inter,system-ui,Arial,sans-serif;
+}
+button,textarea {font:inherit}
+button {cursor:pointer}
+button:focus-visible,textarea:focus-visible {
+ outline:2px solid var(--accent);
+ outline-offset:2px;
+}
+.sidebar {
+ width:265px;
+ min-width:265px;
+ background:var(--side);
+ border-right:1px solid var(--border);
+ padding:18px 13px;
+ display:flex;
+ flex-direction:column;
+ transition:.2s;
+ z-index:5;
+}
+.sidebar.collapsed {
+ width:70px;
+ min-width:70px;
+}
+.sidebar.collapsed .hide-small {display:none}
+.logo {
+ display:flex;
+ align-items:center;
+ gap:12px;
+ padding:8px 7px 25px;
+ font-size:24px;
+ font-weight:800;
+}
+.logo-icon {
+ width:39px;
+ height:39px;
+ display:grid;
+ place-items:center;
+ background:linear-gradient(135deg,#65edbd,#16a879);
+ color:#092b20;
+ border-radius:13px;
+ font-size:22px;
+}
+.logo span {color:var(--accent)}
+.nav {
+ display:flex;
+ align-items:center;
+ gap:12px;
+ width:100%;
+ padding:12px;
+ margin-bottom:5px;
+ border:1px solid transparent;
+ border-radius:10px;
+ background:transparent;
+ color:var(--text);
+ text-align:left;
+ font-size:13px;
+}
+.nav:hover {background:var(--panel2)}
+.nav.active {
+ color:var(--accent);
+ background:#43d9a318;
+ border-color:#43d9a344;
+}
+.nav-icon {font-size:18px;width:21px;text-align:center}
+.section-label {
+ padding:22px 10px 10px;
+ color:var(--muted);
+ font-size:10px;
+ font-weight:700;
+ letter-spacing:1.4px;
+}
+.history {
+ flex:1;
+ min-height:30px;
+ overflow:auto;
+}
+.history-item {
+ display:flex;
+ gap:6px;
+ align-items:center;
+ padding:10px;
+ border-radius:9px;
+ font-size:12px;
+ color:var(--muted);
+ cursor:pointer;
+}
+.history-item:hover,.history-item.selected {
+ background:var(--panel2);
+ color:var(--text);
+}
+.history-title {
+ flex:1;
+ overflow:hidden;
+ white-space:nowrap;
+ text-overflow:ellipsis;
+}
+.history-delete {
+ opacity:0;
+ border:0;
+ color:var(--muted);
+ background:transparent;
+}
+.history-item:hover .history-delete {opacity:1}
+.sidebar-bottom {
+ border-top:1px solid var(--border);
+ padding-top:12px;
+}
+.main {
+ flex:1;
+ min-width:0;
+ display:flex;
+ flex-direction:column;
+}
+.topbar {
+ height:65px;
+ min-height:65px;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ padding:0 22px;
+ border-bottom:1px solid var(--border);
+}
+.top-left,.top-right {
+ display:flex;
+ align-items:center;
+ gap:12px;
+}
+.top-title {font-size:16px;font-weight:800}
+.model-badge {
+ display:flex;
+ align-items:center;
+ gap:7px;
+ padding:7px 10px;
+ border:1px solid var(--border);
+ border-radius:20px;
+ background:var(--panel);
+ color:var(--muted);
+ font-size:11px;
+}
+.dot {
+ width:7px;
+ height:7px;
+ border-radius:50%;
+ background:#888;
+}
+.icon-button {
+ width:37px;
+ height:37px;
+ border:0;
+ border-radius:10px;
+ background:transparent;
+ color:var(--muted);
+ font-size:17px;
+}
+.icon-button:hover {background:var(--panel2);color:var(--text)}
+.chat-area {
+ flex:1;
+ min-height:0;
+ overflow-y:auto;
+ padding:30px 20px;
+ scroll-behavior:smooth;
+}
+.chat-inner {
+ width:min(850px,100%);
+ margin:auto;
+}
+.welcome {
+ min-height:65vh;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ text-align:center;
+}
+.welcome-icon {
+ width:76px;
+ height:76px;
+ display:grid;
+ place-items:center;
+ background:#43d9a322;
+ border:1px solid #43d9a344;
+ color:var(--accent);
+ border-radius:24px;
+ font-size:38px;
+ margin-bottom:22px;
+}
+.welcome h1 {
+ font-size:clamp(29px,4vw,42px);
+ letter-spacing:-1.8px;
+ margin:0 0 12px;
+}
+.gradient {
+ color:transparent;
+ background:linear-gradient(90deg,#43d9a3,#91efd0);
+ background-clip:text;
+}
+.welcome p {color:var(--muted);font-size:14px}
+.suggestions {
+ width:min(590px,100%);
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:10px;
+ margin-top:25px;
+}
+.suggestion {
+ padding:16px;
+ border:1px solid var(--border);
+ border-radius:13px;
+ background:var(--panel);
+ color:var(--text);
+ text-align:left;
+ transition:.2s;
+}
+.suggestion:hover {
+ border-color:var(--accent);
+ transform:translateY(-2px);
+}
+.suggestion strong {display:block;font-size:12px;margin-bottom:7px}
+.suggestion small {color:var(--muted);font-size:11px}
+.message-row {
+ display:flex;
+ gap:13px;
+ margin-bottom:28px;
+ animation:appear .2s ease;
+}
+@keyframes appear {
+ from {opacity:0;transform:translateY(6px)}
+ to {opacity:1;transform:translateY(0)}
+}
+.avatar {
+ width:34px;
+ height:34px;
+ min-width:34px;
+ display:grid;
+ place-items:center;
+ border-radius:11px;
+ background:var(--panel2);
+ color:var(--accent);
+}
+.message-content {flex:1;min-width:0}
+.message-name {font-size:12px;font-weight:700;margin:7px 0 11px}
+.message-text {font-size:14px;line-height:1.8;overflow-wrap:anywhere}
+.user-row .message-text {
+ display:inline-block;
+ max-width:100%;
+ padding:12px 16px;
+ border-radius:5px 15px 15px 15px;
+ background:var(--user);
+ white-space:pre-wrap;
+}
+.markdown-body {font-size:14px;line-height:1.8}
+.markdown-body h1,.markdown-body h2,.markdown-body h3 {
+ line-height:1.35;
+ margin:24px 0 12px;
+}
+.markdown-body h1 {font-size:26px}
+.markdown-body h2 {font-size:21px}
+.markdown-body h3 {font-size:17px}
+.markdown-body p {margin:10px 0}
+.markdown-body a {color:var(--accent);text-decoration:none}
+.markdown-body a:hover {text-decoration:underline}
+.markdown-body ul,.markdown-body ol {padding-left:25px}
+.markdown-body li {margin:5px 0}
+.markdown-body blockquote {
+ margin:16px 0;
+ padding:8px 16px;
+ border-left:3px solid var(--accent);
+ background:var(--panel);
+ color:var(--muted);
+ border-radius:0 9px 9px 0;
+}
+.markdown-body hr {
+ border:0;
+ border-top:1px solid var(--border);
+ margin:23px 0;
+}
+.markdown-body table {
+ display:block;
+ overflow-x:auto;
+ width:100%;
+ border-collapse:collapse;
+ margin:17px 0;
+ font-size:13px;
+}
+.markdown-body th,.markdown-body td {
+ padding:10px 13px;
+ border:1px solid var(--border);
+ text-align:left;
+}
+.markdown-body th {background:var(--panel2)}
+.markdown-body :not(pre)>code {
+ padding:3px 6px;
+ border-radius:5px;
+ background:var(--panel2);
+ color:#70e4b5;
+ font-family:Consolas,monospace;
+ font-size:.9em;
+}
+.code-wrapper {
+ margin:17px 0;
+ overflow:hidden;
+ border:1px solid var(--border);
+ border-radius:12px;
+ background:#17191d;
+}
+.code-header {
+ height:38px;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ padding:0 12px;
+ background:#22252a;
+ color:#b7bec9;
+ font-size:11px;
+}
+.code-copy {
+ padding:5px 9px;
+ border:0;
+ border-radius:6px;
+ background:#343941;
+ color:white;
+ font-size:10px;
+}
+.markdown-body pre {
+ margin:0;
+ padding:17px;
+ overflow-x:auto;
+ background:#17191d;
+}
+.markdown-body pre code {
+ font-family:Consolas,monospace;
+ font-size:12px;
+ line-height:1.75;
+}
+.message-actions {display:flex;gap:7px;margin-top:12px}
+.message-actions button {
+ padding:6px 8px;
+ border:0;
+ border-radius:7px;
+ background:transparent;
+ color:var(--muted);
+ font-size:11px;
+}
+.message-actions button:hover {background:var(--panel2);color:var(--text)}
+.thinking {display:flex;gap:5px;padding:8px 0}
+.thinking span {
+ width:7px;height:7px;border-radius:50%;
+ background:var(--accent);
+ animation:bounce .7s infinite alternate;
+}
+.thinking span:nth-child(2) {animation-delay:.2s}
+.thinking span:nth-child(3) {animation-delay:.4s}
+@keyframes bounce {to {opacity:.3;transform:translateY(-5px)}}
+.composer-section {padding:10px 18px 18px}
+.composer {
+ width:min(850px,100%);
+ margin:auto;
+ padding:12px 14px;
+ border:1px solid var(--border);
+ border-radius:19px;
+ background:var(--panel);
+}
+.composer:focus-within {border-color:#43d9a366}
+textarea {
+ width:100%;
+ min-height:38px;
+ max-height:180px;
+ resize:none;
+ outline:none;
+ border:0;
+ padding:8px;
+ background:transparent;
+ color:var(--text);
+ font-size:14px;
+ line-height:1.6;
+}
+textarea::placeholder {color:var(--muted)}
+.composer-bottom {display:flex;justify-content:space-between;align-items:center}
+.composer-model {font-size:11px;color:var(--muted)}
+.send {
+ width:39px;height:39px;
+ border:0;border-radius:12px;
+ background:var(--accent);color:#092b20;
+ font-size:22px;font-weight:bold;
+}
+.send:disabled {opacity:.4;cursor:not-allowed}
+.footer {margin-top:11px;text-align:center;color:var(--muted);font-size:10px}
+.overlay {
+ position:fixed;
+ inset:0;
+ z-index:20;
+ display:none;
+ align-items:center;
+ justify-content:center;
+ padding:15px;
+ background:#000a;
+}
+.overlay.show {display:flex}
+.modal {
+ width:min(490px,100%);
+ max-height:85vh;
+ overflow-y:auto;
+ padding:23px;
+ border:1px solid var(--border);
+ border-radius:19px;
+ background:var(--side);
+}
+.modal h2 {margin:0 0 8px;font-size:20px}
+.modal-description {margin-bottom:18px;color:var(--muted);font-size:12px;line-height:1.7}
+.model-card {
+ display:flex;
+ align-items:center;
+ gap:12px;
+ padding:13px;
+ margin-bottom:9px;
+ border:1px solid var(--border);
+ border-radius:12px;
+ background:var(--panel);
+ cursor:pointer;
+}
+.model-card.selected {border-color:var(--accent);background:#43d9a310}
+.model-card input {accent-color:var(--accent)}
+.model-card-info {flex:1}
+.model-card-name {font-size:13px;font-weight:700}
+.model-card-detail {margin-top:5px;color:var(--muted);font-size:10px}
+.model-card-tag {font-size:10px;color:var(--accent)}
+.modal-primary {
+ width:100%;
+ margin-top:12px;
+ padding:13px;
+ border:0;
+ border-radius:10px;
+ background:var(--accent);
+ color:#092b20;
+ font-weight:700;
+}
+.modal-secondary {
+ width:100%;
+ margin-top:6px;
+ padding:11px;
+ border:0;
+ background:transparent;
+ color:var(--muted);
+}
+@media(max-width:760px) {
+ .sidebar {
+  position:fixed;inset:0 auto 0 0;
+  transform:translateX(-100%);
+  width:265px;
+ }
+ .sidebar.mobile-open {transform:translateX(0)}
+ .mobile-menu {display:block}
+ .topbar {padding:0 12px}
+ .chat-area {padding:20px 12px}
+ .suggestions {grid-template-columns:1fr}
+ .welcome h1 {font-size:29px}
+ .composer-section {padding:8px 10px 12px}
+}
+.mobile-menu {display:none}
+@media(max-width:760px) {.mobile-menu {display:block}}
+</style>
+</head>
+
+<body>
+
+<aside class="sidebar" id="sidebar">
+ <div class="logo">
+  <div class="logo-icon">✦</div>
+  <div class="hide-small">Mini<span>LLM</span></div>
+ </div>
+
+ <button class="nav active" id="newChat">
+  <span class="nav-icon">＋</span>
+  <span class="hide-small">New chat</span>
+ </button>
+
+ <button class="nav" id="openModels">
+  <span class="nav-icon">◈</span>
+  <span class="hide-small">AI Models</span>
+ </button>
+
+ <div class="section-label hide-small">CONVERSATIONS</div>
+ <div class="history hide-small" id="historyList"></div>
+
+ <div class="sidebar-bottom">
+  <button class="nav" id="theme">
+   <span class="nav-icon">◐</span>
+   <span class="hide-small">Toggle theme</span>
+  </button>
+  <button class="nav" id="collapse">
+   <span class="nav-icon">⇤</span>
+   <span class="hide-small">Collapse sidebar</span>
+  </button>
+ </div>
+</aside>
+
+<main class="main">
+ <header class="topbar">
+  <div class="top-left">
+   <button class="icon-button mobile-menu" id="mobileMenu">☰</button>
+   <div class="top-title">MiniLLM 3.1</div>
+   <div class="model-badge">
+    <span class="dot" id="dot"></span>
+    <span id="modelStatus">Not loaded</span>
+   </div>
+  </div>
+  <div class="top-right">
+   <button class="icon-button" id="topModels">◈</button>
+   <button class="icon-button" id="topTheme">◐</button>
+  </div>
+ </header>
+
+ <section class="chat-area" id="chatArea">
+  <div class="chat-inner" id="chatInner">
+   <div class="welcome" id="welcome">
+    <div class="welcome-icon">✦</div>
+    <h1>Welcome to <span class="gradient">MiniLLM.</span></h1>
+    <p>Your AI. Your models. Your browser.</p>
+    <div class="suggestions">
+     <button class="suggestion" data-prompt="Explain how artificial intelligence works.">
+      <strong>✧ Learn something</strong>
+      <small>Explore a new topic</small>
+     </button>
+     <button class="suggestion" data-prompt="Write a JavaScript calculator.">
+      <strong>⌘ Write some code</strong>
+      <small>Build something useful</small>
+     </button>
+     <button class="suggestion" data-prompt="Give me five creative project ideas.">
+      <strong>✦ Get creative</strong>
+      <small>Find new inspiration</small>
+     </button>
+     <button class="suggestion" data-prompt="Explain how computer processors work.">
+      <strong>◈ Technology</strong>
+      <small>Explore hardware</small>
+     </button>
+    </div>
+   </div>
+  </div>
+ </section>
+
+ <section class="composer-section">
+  <div class="composer">
+   <textarea id="prompt" placeholder="Message MiniLLM..." rows="1"></textarea>
+   <div class="composer-bottom">
+    <span class="composer-model" id="composerModel">No model loaded</span>
+    <button class="send" id="send" disabled>↑</button>
+   </div>
+  </div>
+  <div class="footer">MiniLLM may make mistakes. Verify important information.</div>
+ </section>
+</main>
+
+<div class="overlay" id="modelOverlay">
+ <div class="modal">
+  <h2>Choose an AI model</h2>
+  <div class="modal-description">
+   Select a local model. Model availability depends on the WebLLM registry version.
+  </div>
+
+  <div id="modelCards">
+
+   <label class="model-card">
+    <input type="radio" name="model" value="Qwen3-8B-q4f32_1-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">Qwen3 8B</div>
+     <div class="model-card-detail">Q4F32_1</div>
+    </div>
+    ✦
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="Qwen3-4B-q4f32_1-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">Qwen3 4B</div>
+     <div class="model-card-detail">Q4F32_1</div>
+    </div>
+    ✦
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="Qwen3-1.7B-q4f32_1-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">Qwen3 1.7B</div>
+     <div class="model-card-detail">Q4F32_1</div>
+    </div>
+    ✦
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="gemma-2-9b-it-q4f16_1-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">Gemma 2 9B</div>
+     <div class="model-card-detail">Q4F16_1</div>
+    </div>
+    ◈
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="gemma-2-2b-it-q4f32_1-MLC-1k" checked>
+    <div class="model-card-info">
+     <div class="model-card-name">Gemma 2 2B</div>
+     <div class="model-card-detail">Q4F32_1 · MLC-1K · 1K context</div>
+    </div>
+    <span class="model-card-tag">NEW</span>
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="Llama-3.2-3B-Instruct-q4f32_1-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">Llama 3.2 3B</div>
+     <div class="model-card-detail">Q4F32_1</div>
+    </div>
+    ◎
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="Llama-3.2-1B-Instruct-q4f32_1-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">Llama 3.2 1B</div>
+     <div class="model-card-detail">Q4F32_1</div>
+    </div>
+    ◎
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="stablelm-2-zephyr-1_6b-q4f16_1-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">StableLM 2 Zephyr 1.6B</div>
+     <div class="model-card-detail">Q4F16_1</div>
+    </div>
+    ◈
+   </label>
+
+   <label class="model-card">
+    <input type="radio" name="model" value="SmolLM2-360M-Instruct-q0f32-MLC">
+    <div class="model-card-info">
+     <div class="model-card-name">SmolLM2 360M Instruct</div>
+     <div class="model-card-detail">Q0F32</div>
+    </div>
+    ◈
+   </label>
+
+  </div>
+
+  <button class="modal-primary" id="loadModel">Load selected model</button>
+  <button class="modal-secondary" id="closeModels">Cancel</button>
+ </div>
+</div>
+
+<script type="module">
+import {
+ CreateMLCEngine,
+ prebuiltAppConfig
+} from "https://esm.run/@mlc-ai/web-llm";
+
+/* MODEL LIST */
+
+const MODELS = {
+ "Qwen3-8B-q4f32_1-MLC": {
+  name:"Qwen3 8B",
+  quant:"Q4F32_1"
+ },
+ "Qwen3-4B-q4f32_1-MLC": {
+  name:"Qwen3 4B",
+  quant:"Q4F32_1"
+ },
+ "Qwen3-1.7B-q4f32_1-MLC": {
+  name:"Qwen3 1.7B",
+  quant:"Q4F32_1"
+ },
+ "gemma-2-9b-it-q4f16_1-MLC": {
+  name:"Gemma 2 9B",
+  quant:"Q4F16_1"
+ },
+ "gemma-2-2b-it-q4f32_1-MLC-1k": {
+  name:"Gemma 2 2B",
+  quant:"Q4F32_1",
+  context:1024
+ },
+ "Llama-3.2-3B-Instruct-q4f32_1-MLC": {
+  name:"Llama 3.2 3B",
+  quant:"Q4F32_1"
+ },
+ "Llama-3.2-1B-Instruct-q4f32_1-MLC": {
+  name:"Llama 3.2 1B",
+  quant:"Q4F32_1"
+ },
+ "stablelm-2-zephyr-1_6b-q4f16_1-MLC": {
+  name:"StableLM 2 Zephyr 1.6B",
+  quant:"Q4F16_1"
+ },
+ "SmolLM2-360M-Instruct-q0f32-MLC": {
+  name:"SmolLM2 360M Instruct",
+  quant:"Q0F32"
+ }
+};
+
+let engine = null;
+let loadedModel = null;
+let busy = false;
+let conversations = [];
+let currentConversation = null;
+
+const $ = id => document.getElementById(id);
+
+/* MARKDOWN */
+
+marked.setOptions({
+ gfm:true,
+ breaks:true,
+ headerIds:false,
+ mangle:false
+});
+
+function renderMarkdown(source) {
+ const html = marked.parse(source || "");
+ return DOMPurify.sanitize(html,{
+  USE_PROFILES:{html:true}
+ });
+}
+
+function enhanceMarkdown(container) {
+ container.querySelectorAll("pre").forEach(pre => {
+  if (pre.parentElement.classList.contains("code-wrapper")) return;
+
+  const code = pre.querySelector("code");
+  const wrapper = document.createElement("div");
+  wrapper.className = "code-wrapper";
+
+  const header = document.createElement("div");
+  header.className = "code-header";
+
+  const match = code?.className.match(/language-([\w-]+)/);
+  const label = document.createElement("span");
+  label.textContent = match ? match[1] : "Code";
+
+  const copy = document.createElement("button");
+  copy.className = "code-copy";
+  copy.textContent = "Copy code";
+
+  copy.onclick = async () => {
+   try {
+    await navigator.clipboard.writeText(code?.textContent || "");
+    copy.textContent = "Copied!";
+    setTimeout(() => copy.textContent = "Copy code",1300);
+   } catch {
+    copy.textContent = "Copy unavailable";
+   }
+  };
+
+  header.append(label,copy);
+  pre.replaceWith(wrapper);
+  wrapper.append(header,pre);
+
+  if (code && window.hljs) {
+   try {window.hljs.highlightElement(code)} catch {}
+  }
+ });
+
+ container.querySelectorAll("a[href]").forEach(link => {
+  const url = new URL(link.href,location.href);
+  if (url.protocol === "https:" || url.protocol === "http:") {
+   link.target = "_blank";
+   link.rel = "noopener noreferrer";
+  } else {
+   link.removeAttribute("href");
+  }
+ });
+}
+
+/* STORAGE */
+
+function saveData() {
+ try {
+  localStorage.setItem("minillm31-chats",JSON.stringify(conversations));
+ } catch(error) {
+  console.warn("Storage unavailable",error);
+ }
+}
+
+function loadData() {
+ try {
+  const data = JSON.parse(localStorage.getItem("minillm31-chats") || "[]");
+  conversations = Array.isArray(data) ? data : [];
+ } catch {
+  conversations = [];
+ }
+}
+
+/* STATUS */
+
+function setStatus(message,ready=false) {
+ $("modelStatus").textContent = message;
+ $("dot").style.background = ready ? "var(--accent)" : "#888";
+ $("dot").style.boxShadow = ready ? "0 0 10px var(--accent)" : "none";
+}
+
+/* MODEL SELECTION */
+
+function selectedModel() {
+ return document.querySelector('input[name="model"]:checked')?.value;
+}
+
+function updateCards() {
+ document.querySelectorAll(".model-card").forEach(card => {
+  card.classList.toggle(
+   "selected",
+   card.querySelector("input").checked
+  );
+ });
+}
+
+function openModels() {
+ $("modelOverlay").classList.add("show");
+}
+
+function closeModels() {
+ $("modelOverlay").classList.remove("show");
+}
+
+/* GPU RECOVERY */
+
+function isDeviceLost(error) {
+ return /device lost|device was lost|GPUDeviceLostInfo/i.test(
+  String(error?.message || error)
+ );
+}
+
+function recoverGPU() {
+ engine = null;
+ loadedModel = null;
+ $("send").disabled = true;
+ $("composerModel").textContent = "GPU disconnected";
+ setStatus("GPU lost · Reload required");
+
+ const notice = document.createElement("div");
+ notice.style.cssText =
+  "padding:15px;background:var(--panel);border:1px solid var(--border);border-radius:12px;margin-top:12px";
+
+ const message = document.createElement("p");
+ message.textContent =
+  "WebGPU was disconnected. Reload MiniLLM to initialize a fresh GPU device.";
+
+ const button = document.createElement("button");
+ button.className = "modal-primary";
+ button.textContent = "Reload MiniLLM";
+ button.onclick = () => location.reload();
+
+ notice.append(message,button);
+ $("chatInner").appendChild(notice);
+}
+
+/* LOAD MODEL */
+
+async function loadModel() {
+ if (busy) return;
+
+ if (!navigator.gpu) {
+  setStatus("WebGPU unavailable");
+  return;
+ }
+
+ const id = selectedModel();
+ if (!MODELS[id]) return;
+
+ const registered = prebuiltAppConfig.model_list.some(
+  model => model.model_id === id
+ );
+
+ if (!registered) {
+  setStatus("Model ID not in this WebLLM registry");
+  alert(
+   "This model ID is not registered in the current WebLLM version:\n\n" + id
+  );
+  return;
+ }
+
+ busy = true;
+ $("loadModel").disabled = true;
+ $("send").disabled = true;
+
+ try {
+  setStatus("Preparing model...");
+
+  if (engine) {
+   const oldEngine = engine;
+   engine = null;
+   loadedModel = null;
+   try {await oldEngine.unload()} catch(error) {
+    console.warn("Previous engine cleanup failed",error);
+   }
+  }
+
+  const newEngine = await CreateMLCEngine(id,{
+   initProgressCallback: progress => {
+    setStatus(progress.text || "Loading model...");
+   }
+  });
+
+  engine = newEngine;
+  loadedModel = id;
+  $("composerModel").textContent = MODELS[id].name;
+  setStatus(MODELS[id].name + " ready",true);
+  closeModels();
+
+ } catch(error) {
+  engine = null;
+  loadedModel = null;
+  setStatus(isDeviceLost(error) ? "GPU device lost" : "Model loading failed");
+  alert("Model loading failed:\n" + error.message);
+ } finally {
+  busy = false;
+  $("loadModel").disabled = false;
+  $("send").disabled = !engine;
+ }
+}
+
+/* CHAT UI */
+
+function showWelcome() {
+ $("chatInner").innerHTML = `
+ <div class="welcome" id="welcome">
+  <div class="welcome-icon">✦</div>
+  <h1>Welcome to <span class="gradient">MiniLLM.</span></h1>
+  <p>Your AI. Your models. Your browser.</p>
+  <div class="suggestions">
+   <button class="suggestion" data-prompt="Explain how artificial intelligence works.">
+    <strong>✧ Learn something</strong><small>Explore a new topic</small>
+   </button>
+   <button class="suggestion" data-prompt="Write a JavaScript calculator.">
+    <strong>⌘ Write some code</strong><small>Build something useful</small>
+   </button>
+   <button class="suggestion" data-prompt="Give me five creative project ideas.">
+    <strong>✦ Get creative</strong><small>Find new inspiration</small>
+   </button>
+   <button class="suggestion" data-prompt="Explain how computer processors work.">
+    <strong>◈ Technology</strong><small>Explore hardware</small>
+   </button>
+  </div>
+ </div>`;
+}
+
+function addMessage(role,content,scroll=true) {
+ $("welcome")?.remove();
+
+ const row = document.createElement("div");
+ row.className = "message-row";
+ if (role === "user") row.classList.add("user-row");
+
+ const avatar = document.createElement("div");
+ avatar.className = "avatar";
+ avatar.textContent = role === "user" ? "◉" : "✦";
+
+ const box = document.createElement("div");
+ box.className = "message-content";
+
+ const name = document.createElement("div");
+ name.className = "message-name";
+ name.textContent = role === "user" ? "You" : "MiniLLM";
+
+ const contentBox = document.createElement("div");
+ contentBox.className = "message-text";
+
+ if (role === "assistant") {
+  contentBox.classList.add("markdown-body");
+  contentBox.innerHTML = renderMarkdown(content);
+  enhanceMarkdown(contentBox);
+ } else {
+  contentBox.textContent = content;
+ }
+
+ box.append(name,contentBox);
+
+ if (role === "assistant") {
+  const actions = document.createElement("div");
+  actions.className = "message-actions";
+  const copy = document.createElement("button");
+  copy.textContent = "▣ Copy response";
+  copy.onclick = async () => {
+   try {
+    await navigator.clipboard.writeText(contentBox.innerText);
+    copy.textContent = "✓ Copied";
+   } catch {
+    copy.textContent = "Copy unavailable";
+   }
+  };
+  actions.append(copy);
+  box.append(actions);
+ }
+
+ row.append(avatar,box);
+ $("chatInner").appendChild(row);
+
+ if (scroll) $("chatArea").scrollTop = $("chatArea").scrollHeight;
+ return contentBox;
+}
+
+function updateAssistant(element,text) {
+ element.innerHTML = renderMarkdown(text);
+ enhanceMarkdown(element);
+ $("chatArea").scrollTop = $("chatArea").scrollHeight;
+}
+
+/* CONVERSATIONS */
+
+function getConversation() {
+ return conversations.find(c => c.id === currentConversation);
+}
+
+function newConversation() {
+ const conversation = {
+  id:crypto.randomUUID(),
+  title:"New conversation",
+  messages:[],
+  model:loadedModel
+ };
+ conversations.push(conversation);
+ currentConversation = conversation.id;
+ saveData();
+ renderHistory();
+ showWelcome();
+}
+
+function renderHistory() {
+ $("historyList").innerHTML = "";
+
+ [...conversations].reverse().forEach(conversation => {
+  const item = document.createElement("div");
+  item.className = "history-item";
+  if (conversation.id === currentConversation) item.classList.add("selected");
+
+  const title = document.createElement("span");
+  title.className = "history-title";
+  title.textContent = conversation.title;
+
+  const remove = document.createElement("button");
+  remove.className = "history-delete";
+  remove.textContent = "×";
+  remove.title = "Delete conversation";
+
+  remove.onclick = event => {
+   event.stopPropagation();
+   conversations = conversations.filter(c => c.id !== conversation.id);
+   if (currentConversation === conversation.id) {
+    currentConversation = null;
+    showWelcome();
+   }
+   saveData();
+   renderHistory();
+  };
+
+  item.append(title,remove);
+  item.onclick = () => openConversation(conversation.id);
+  $("historyList").appendChild(item);
+ });
+}
+
+function openConversation(id) {
+ if (busy) return;
+ const conversation = conversations.find(c => c.id === id);
+ if (!conversation) return;
+
+ currentConversation = id;
+ $("chatInner").innerHTML = "";
+ conversation.messages.forEach(message => {
+  addMessage(message.role,message.content,false);
+ });
+ renderHistory();
+ $("chatArea").scrollTop = $("chatArea").scrollHeight;
+}
+
+function renameConversation(text) {
+ const conversation = getConversation();
+ if (!conversation || conversation.messages.length) return;
+ conversation.title = text.length > 38 ? text.slice(0,38) + "…" : text;
+ renderHistory();
+}
+
+/* GENERATION */
+
+async function sendMessage() {
+ const input = $("prompt").value.trim();
+ if (!input || busy) return;
+
+ if (!engine) {
+  setStatus("Load a model first");
+  openModels();
+  return;
+ }
+
+ if (!currentConversation) newConversation();
+
+ const conversation = getConversation();
+ if (!conversation) return;
+
+ busy = true;
+ $("send").disabled = true;
+ $("prompt").value = "";
+ $("prompt").style.height = "auto";
+
+ renameConversation(input);
+
+ conversation.messages.push({role:"user",content:input});
+ addMessage("user",input);
+
+ const output = addMessage("assistant","");
+ const thinking = document.createElement("div");
+ thinking.className = "thinking";
+
+ for (let i=0;i<3;i++) {
+  thinking.appendChild(document.createElement("span"));
+ }
+ output.appendChild(thinking);
+
+ saveData();
+
+ try {
+  const stream = await engine.chat.completions.create({
+   messages:[
+    {
+     role:"system",
+     content:
+      "You are MiniLLM, a helpful AI assistant. " +
+      "Use Markdown when appropriate. Use fenced code blocks for code. " +
+      "Be clear, accurate, and helpful."
+    },
+    ...conversation.messages.slice(-8)
+   ],
+   temperature:0.7,
+   max_tokens:512,
+   stream:true
+  });
+
+  let answer = "";
+  thinking.remove();
+
+  for await (const chunk of stream) {
+   answer += chunk.choices[0]?.delta?.content || "";
+   updateAssistant(output,answer);
+  }
+
+  conversation.messages.push({
+   role:"assistant",
+   content:answer
+  });
+
+  conversation.model = loadedModel;
+  saveData();
+  renderHistory();
+  setStatus(MODELS[loadedModel].name + " ready",true);
+
+ } catch(error) {
+  thinking.remove();
+
+  if (isDeviceLost(error)) {
+   output.textContent = "WebGPU device lost. Reload MiniLLM to recover.";
+   recoverGPU();
+  } else {
+   output.textContent = "Generation error: " + error.message;
+   conversation.messages.pop();
+   setStatus("Generation failed");
+  }
+  saveData();
+
+ } finally {
+  busy = false;
+  $("send").disabled = !engine;
+  $("prompt").focus();
+ }
+}
+
+/* EVENTS */
+
+$("newChat").onclick = () => {
+ if (busy) return;
+ currentConversation = null;
+ newConversation();
+};
+
+$("openModels").onclick = openModels;
+$("topModels").onclick = openModels;
+$("closeModels").onclick = closeModels;
+$("loadModel").onclick = loadModel;
+$("modelCards").onchange = updateCards;
+
+$("modelOverlay").onclick = event => {
+ if (event.target === $("modelOverlay")) closeModels();
+};
+
+$("send").onclick = sendMessage;
+
+$("prompt").oninput = () => {
+ const field = $("prompt");
+ field.style.height = "auto";
+ field.style.height = Math.min(field.scrollHeight,180) + "px";
+};
+
+$("prompt").onkeydown = event => {
+ if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+  event.preventDefault();
+  sendMessage();
+ }
+};
+
+$("chatInner").onclick = event => {
+ const suggestion = event.target.closest("[data-prompt]");
+ if (!suggestion) return;
+ $("prompt").value = suggestion.dataset.prompt;
+ $("prompt").focus();
+};
+
+function toggleTheme() {
+ document.body.classList.toggle("light");
+ try {
+  localStorage.setItem(
+   "minillm31-theme",
+   document.body.classList.contains("light") ? "light" : "dark"
+  );
+ } catch {}
+}
+
+$("theme").onclick = toggleTheme;
+$("topTheme").onclick = toggleTheme;
+
+$("collapse").onclick = () => {
+ $("sidebar").classList.toggle("collapsed");
+};
+
+$("mobileMenu").onclick = () => {
+ $("sidebar").classList.toggle("mobile-open");
+};
+
+/* STARTUP */
+
+loadData();
+renderHistory();
+updateCards();
+
+try {
+ if (localStorage.getItem("minillm31-theme") === "light") {
+  document.body.classList.add("light");
+ }
+} catch {}
+
+</script>
+</body>
+</html>
